@@ -1,15 +1,14 @@
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
 
-#define SIZE 200000
+#define SIZE 2000000
 #define MAX 10000
 
 int a[SIZE];
 int b[SIZE];
-int p1[SIZE / 2];
-int p2[SIZE / 2];
 
 void init()
 {
@@ -17,7 +16,6 @@ void init()
     srand((unsigned)time(NULL));
     for (i = 0; i < SIZE; i++)
         a[i] = rand() % MAX;
-    
 }
 
 void swap(int *a, int *b)
@@ -27,23 +25,6 @@ void swap(int *a, int *b)
     *a = *b;
     *b = temp;
     return;
-}
-
-void merge(int *a, int *b, int *c)
-{
-    int p = 0, q = 0, r = 0;
-    while (p < SIZE / 2 && q < SIZE / 2)
-        if (a[p] <= b[q])
-            c[r++] = a[p++];
-        else
-            c[r++] = b[q++];
-    if (p == SIZE / 2)
-        while(q < SIZE / 2)
-            c[r++] = b[q++];
-    else
-        while(p < SIZE / 2)
-            c[r++] = a[p++];
-    printf("p: %d, q: %d, r: %d\n", p, q, r);
 }
 
 void QuickSort(int *a, int l, int r)
@@ -64,18 +45,53 @@ void QuickSort(int *a, int l, int r)
         QuickSort(a, ll, r);
 }
 
-int main()
+void merge(int *a, int *b, int *c)
 {
-    init();
-    QuickSort(p1, 0, SIZE / 2 - 1);
-    QuickSort(p2, 0, SIZE / 2 - 1);
-    merge(p1, p2, b);
-    int i;
-    for (i = 0; i < SIZE / 2; i++)
-        printf("1: %d: %d\n", i, p1[i]);
-    for (i = 0; i < SIZE / 2; i++)
-        printf("2: %d: %d\n", i, p2[i]);
-    for (i = 0; i < SIZE; i++)
-        printf("3: %d: %d\n", i, b[i]);
-    return 0;
+    int p = 0, q = 0, r = 0;
+    while (p < SIZE / 2 && q < SIZE / 2)
+        if (a[p] <= b[q])
+            c[r++] = a[p++];
+        else
+            c[r++] = b[q++];
+    if (p == SIZE / 2)
+        while(q < SIZE / 2)
+            c[r++] = b[q++];
+    else
+        while(p < SIZE / 2)
+            c[r++] = a[p++];
+    //printf("p: %d, q: %d, r: %d\n", p, q, r);
+}
+
+void *runner(void *param); /* threads call this function */
+
+int main(int argc, char *argv[])
+{
+	int i = 0;
+	int p1[SIZE / 2];
+	int p2[SIZE / 2];
+	
+	init();
+	for (i = 0; i < SIZE / 2; i++)
+	{
+		p1[i] = a[i];
+		p2[i] = a[i + SIZE / 2];
+	}
+	
+	pthread_t tid; /* the thread identifier */
+	pthread_attr_t attr; /* set of thread attributes */
+	pthread_attr_init(&attr);/*set the default attributes */
+
+	pthread_create(&tid, &attr, runner, p1);/* create the thread */
+	pthread_create(&tid, &attr, runner, p2);/* create the thread */
+
+	pthread_join(tid, NULL); //wait for the created thread to terminate
+	pthread_join(tid, NULL); //wait for the created thread to terminate
+	
+	merge(p1, p2, b);
+}
+
+void *runner(void *param)
+{
+	QuickSort(param, 0, SIZE / 2 - 1);
+	pthread_exit(NULL); //exit
 }
