@@ -4,14 +4,14 @@
 #include <fcntl.h>       
 #include <unistd.h>  
 #include <string.h>     
-
+#define SIZE 1024
 
 //ssize_t write(int fd, const void *buf, size_t count);
 
 
 int main()
 {
-	char buf[1024];
+	char str[SIZE];
 
 	int fd = open("myfifo", O_WRONLY);
 
@@ -20,18 +20,13 @@ int main()
 	else
 		printf("Fifo opened for writing!\n");
 	
-	char c;
-	c = getchar();
-	while(c != '!')
+	fgets(str, SIZE, stdin);
+	while(strcmp(str, "88\n"))
 	{
-		memset(buf, c, 1);
-		write(fd, buf, 1);
+		write(fd, str, SIZE);
+		fgets(str, SIZE, stdin);
 	}
-	// getchar();
-
-	// memset(buf, 'A', 10);
-	// memset(buf + 10, '\0', 1);
-	// write(fd, buf, 11);
+	write(fd, str, SIZE);
 
 	close(fd);
 	return 0;

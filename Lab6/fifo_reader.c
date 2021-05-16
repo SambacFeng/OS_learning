@@ -4,13 +4,14 @@
 #include <fcntl.h>
 #include <unistd.h>            
 #include <string.h>
+#define SIZE 1024
 
 //ssize_t read(int fd, void *buf, size_t count);
 
 
 int main()
 {	
-	char buf[1024]; //buffer
+	char str[SIZE];
 
 	int fd = open("myfifo", O_RDONLY);
 
@@ -19,11 +20,13 @@ int main()
 	else 
 		printf("Fifo opened for reading!\n");
 
-	while(1)
+	read(fd, str, SIZE);
+	while(strcmp(str, "88\n"))
 	{
-		read(fd, buf, 1024);
+		printf("String read: %s", str);
+		read(fd, str, SIZE);
 	}
-	printf("String read: %s\n", buf);
+	printf("String read: %s", str);
 
 	close(fd);
 	return 0;
