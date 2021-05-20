@@ -31,7 +31,6 @@ void *inputMsg(void *p)
 	flag = 0;
 
 	close(fd);
-	fflush(NULL);
 	pthread_exit(NULL);
 }
 
@@ -51,12 +50,9 @@ void *outputMsg(void *p)
 		printf("[B]: %s", msg);
 		read(fd, msg, SIZE);
 	}
-	printf("[B]: %s", msg);
-
-	// fflush(NULL);
-	// write(fd, "88\n", SIZE);
+	
 	close(fd);
-	// pthread_exit(NULL);
+	pthread_exit(NULL);
 }
 
 int main()
@@ -70,24 +66,6 @@ int main()
 
 	pthread_join(tid, NULL);
 	pthread_join(tid, NULL);
-
-	// char str[SIZE];
-
-	// int fd = open("myfifo", O_RDONLY);
-
-	// if(fd == -1)
-	// 	printf("Open fifo error!\n");
-	// else 
-	// 	printf("Fifo opened for reading!\n");
-
-	// read(fd, str, SIZE);
-	// while(strcmp(str, "88\n"))
-	// {
-	// 	printf("String read: %s", str);
-	// 	read(fd, str, SIZE);
-	// }
-	// printf("String read: %s", str);
-
-	// close(fd);
+	
 	return 0;
 }
