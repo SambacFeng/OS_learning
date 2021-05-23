@@ -6,66 +6,108 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <signal.h>
 #define SIZE 1024
+
+void *readMsg(void *param);
+void *writeMsg(void *param);
+void stop();
 
 int flag = 1;
 
-//ssize_t read(int fd, void *buf, size_t count);
-void *inputMsg(void *p)
-{
-	char msg[SIZE];
+struct pps {
+	int fd1, fd2;
+	char* buf1;
+	char* buf2;
+	pthread_t tid1, tid2;
+} pp;
 
-	int fd = open("fifo1", O_WRONLY);
-	if(fd == -1)
+int main() {
+	char buf1[SIZE];
+	int fd1 = open("fifo1", O_WRONLY);
+
+	if(fd1 == -1)
 		printf("Open fifo1 error!\n");
 	else
-		printf("Fifo1 opened for inputting!\n");
-	
-	fgets(msg, SIZE, stdin);
-	while(strcmp(msg, "88\n") && flag)
-	{
-		write(fd, msg, SIZE);
-		fgets(msg, SIZE, stdin);
-	}
-	write(fd, msg, SIZE);
-	flag = 0;
+		printf("Fifo1 opened for writing!\n");
 
-	close(fd);
-	pthread_exit(NULL);
-}
+	char buf2[SIZE];
+	int fd2 = open("fifo2", O_RDONLY);
 
-void *outputMsg(void *p)
-{
-	char msg[SIZE];
-
-	int fd = open("fifo2", O_RDONLY);
-	if(fd == -1)
+	if(fd2 == -1)
 		printf("Open fifo2 error!\n");
 	else 
-		printf("Fifo2 opened for outputting!\n");
+		printf("Fifo2 opened for reading!\n");
+		
+	pp.fd2 = fd2;
+	pp.buf2 = buf2;
+	pp.fd1 = fd1;
+	pp.buf1 = buf1;
+
+	pthread_t tid1,tid2;
+	pthread_attr_t attr1, attr2;
+	pthread_attr_init(&attr1);
+	pthread_attr_init(&attr2);
+	pthread_create(&tid1, &attr1, readMsg, &pp);
+	pthread_create(&tid2, &attr2, writeMsg, &pp);
 	
-	read(fd, msg, SIZE);
-	while(strcmp(msg, "88\n") && flag)
+	pp.tid1 = tid1;
+	pp.tid2 = tid2;
+	
+	pthread_join(tid1, NULL);
+	pthread_join(tid2, NULL);
+	
+	return 0;
+}
+
+void stop(int fd1,int fd2) {
+	close(fd1);
+	close(fd2);
+	flag = 0;
+}
+	
+void *readMsg(void *param) {
+
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+	struct pps *pp;
+	pp = ( struct pps*) param;
+	
+	while(flag) 
 	{
-		printf("[A]: %s", msg);
-		read(fd, msg, SIZE);
+		read(pp->fd2, pp->buf2, SIZE);
+		printf("\r[A]: %s", pp->buf2);
+		
+		if(!strcmp(pp->buf1, "88\n") || !strcmp(pp->buf2, "88\n"))
+			break;
+		
+		printf("[B]: ");
+		fflush(stdout);
 	}
 
-	close(fd);
+	stop(pp->fd1, pp->fd2);
+	pthread_cancel(pp->tid2);
 	pthread_exit(NULL);
 }
 
-int main()
-{	
-	pthread_t tid;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
+void *writeMsg(void *param) {
 
-	pthread_create(&tid, &attr, inputMsg, NULL);
-	pthread_create(&tid, &attr, outputMsg, NULL);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-	pthread_join(tid, NULL);
-	pthread_join(tid, NULL);
+	struct pps *pp;
+	pp = ( struct pps*) param;
 	
-	return 0;
+	while(flag) 
+	{
+		printf("[B]: ");
+		fgets(pp->buf1, SIZE, stdin);
+		write(pp->fd1, pp->buf1, SIZE);
+	
+		if(!strcmp(pp->buf1, "88\n") || !strcmp(pp->buf2, "88\n"))
+			break;
+	}
+	
+	stop(pp->fd1, pp->fd2);
+	pthread_cancel(pp->tid1);
+	pthread_exit(NULL);
 }
