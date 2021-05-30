@@ -8,6 +8,11 @@
 
 int count;
 
+pthread_mutex_t mutex; //delcare mutex
+
+void *producer(void *param); /* threads call this function */
+void *consumer(void *param); /* threads call this function */
+
 long int test_n_set(long int *lock)
 {
 	long int res;
@@ -23,8 +28,15 @@ long int test_n_set(long int *lock)
 	return res;
 }
 
-void *producer(void *param); /* threads call this function */
-void *consumer(void *param); /* threads call this function */
+void my_Lock(long *lock)
+{
+	while (test_n_set(lock));
+}
+
+void my_Unlock(long *lock)
+{
+	*lock = 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -32,12 +44,15 @@ int main(int argc, char *argv[])
 	pthread_attr_t attr; /* set of thread attributes */
 	pthread_attr_init(&attr); /* get the default attributes */
 
+	pthread_mutex_init(&mutex, NULL); //initialization of mutex lock; 
+						//NULL means using the default attribute
+
 	while(1)
 	{
 		count = 5; //init
 
-		pthread_create(&tid1, &attr, producer, NULL); /* create a thread */
-		pthread_create(&tid2, &attr, consumer, NULL); /* create a thread */
+		pthread_create(&tid1, &attr, producer, NULL); /* create the thread */
+		pthread_create(&tid2, &attr, consumer, NULL); /* create the thread */
 
 		pthread_join(tid1, NULL);
 		pthread_join(tid2, NULL);
@@ -56,11 +71,13 @@ int main(int argc, char *argv[])
 void *producer(void *param)
 {	
 	cpu_set_t cpuSet;
-	CPU_ZERO(&cpuSet);    //clear
-        CPU_SET(0, &cpuSet);   //set core i
+	CPU_ZERO(&cpuSet);     //clear
+        CPU_SET(0, &cpuSet);   //set core 0
 	sched_setaffinity(0, sizeof(cpuSet), &cpuSet);
 
+	pthread_mutex_lock(&mutex); //lock
 	count++; //produce one element
+	pthread_mutex_unlock(&mutex); //unlock
 
 	pthread_exit(0);
 }
@@ -68,11 +85,15 @@ void *producer(void *param)
 void *consumer(void *param)
 {	
 	cpu_set_t cpuSet;
-	CPU_ZERO(&cpuSet);    //clear
-        CPU_SET(1, &cpuSet);   //set core i
+	CPU_ZERO(&cpuSet);     //clear
+        CPU_SET(1, &cpuSet);   //set core 1
 	sched_setaffinity(0, sizeof(cpuSet), &cpuSet);
 	
-	count--; //consume one
+	while (count == 0);
+
+	pthread_mutex_lock(&mutex); //lock
+	count--; //consume one element
+	pthread_mutex_unlock(&mutex); //unlock
 
 	pthread_exit(0);
 }
